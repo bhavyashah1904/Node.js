@@ -39,7 +39,7 @@ class fileCustomWriteStream extends Writable {
   //_write() method will be called whenever we try to write to a file by calling the stream.write() method.
 
   _write(chunk, encoding, callback) {
-    console.log(this.fd);
+    // console.log(this.fd);
     //Do the write operation
     this.chunksArr.push(chunk);
     this.chunkSize += chunk.length;
@@ -63,6 +63,7 @@ class fileCustomWriteStream extends Writable {
   }
 
   //If our chunkSize does not reach the highWaterMark, use the final method to write anyway
+  //Once the final method's callback is called, the _destroy method will get called.
   _final(callback) {
     fs.write(this.fd, Buffer.concat(this.chunksArr), (err) => {
       if (err) {
@@ -74,6 +75,18 @@ class fileCustomWriteStream extends Writable {
       }
     });
   }
+
+  //closing our file. the _final method will emit the "finish" event after its callback is called successfully.
+  _destroy(error, callback) {
+    console.log("Number of writes: ", this.writesCount);
+    if (this.fd) {
+      fs.close(this.fd, (err) => {
+        callback(err || error);
+      });
+    } else {
+      callback(error);
+    }
+  }
 }
 
 //Initializing the stream
@@ -84,8 +97,12 @@ const stream = new fileCustomWriteStream({
 
 //perform the write
 stream.write(
-  Buffer.from("This is the string that needs to be added to the file")
+  Buffer.from("This is the string that needs to be added to the file. ")
 );
 
 //Call the end method. Without this the _final() won't get called.
 stream.end(Buffer.from("End of stream!!"));
+
+stream.on("finish", () => {
+  console.log("Stream was finished.");
+});
